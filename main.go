@@ -20,8 +20,18 @@ func main() {
 	apiURL := os.Getenv("API_URL")
 	apiNonce := os.Getenv("API_NONCE")
 	apiSign := os.Getenv("API_SIGN")
+	// Replace with your Telegram Bot Token
+	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
+	if botToken == "" {
+		fmt.Errorf("Telegram bot token not found in environment variables")
+		return
+	}
+	channelID := os.Getenv("CHANNEL_ID")
+	if channelID == "" {
+		log.Fatal("CHANNEL_ID not set in environment")
+	}
 	retryInterval := 1 * time.Minute
-	seenQuestIDs, err := initSeenQuest(apiURL, apiNonce, apiSign)
+	seenQuestIDs, err := initSeenQuest(apiURL, apiNonce, apiSign, botToken, channelID)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -52,9 +62,13 @@ func main() {
 			questID := quest.Article.ID
 			_, seen := seenQuestIDs[questID]
 			if !seen {
-				// New quest found, print it
-				fmt.Printf("New Quest: %+v\n", quest.Article.Quest.Name)
-				fmt.Printf("Link: %s\n", createQuestURL(questID))
+				// New quest found, send message to channel
+				xp := quest.Article.Quest.UnitXP
+				textButton := fmt.Sprintf("View Quest %d XP", xp)
+				message := fmt.Sprintf("New Quest: %s\n", quest.Article.Quest.Name)
+				if err := SendMessage(botToken, message, textButton, createQuestURL(questID), channelID); err != nil {
+					log.Printf("Failed to send message: %v", err)
+				}
 				seenQuestIDs[questID] = struct{}{}
 			}
 		}

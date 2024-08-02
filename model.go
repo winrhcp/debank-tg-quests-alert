@@ -194,3 +194,13 @@ type Draw struct {
 	SettledAt               interface{} `json:"settled_at"`
 	WinnerCount             interface{} `json:"winner_count"`
 }
+
+// TG
+type InlineKeyboardButton struct {
+	Text string `json:"text"`
+	URL  string `json:"url"`
+}
+
+type InlineKeyboardMarkup struct {
+	InlineKeyboard [][]InlineKeyboardButton `json:"inline_keyboard"`
+}
