@@ -55,7 +55,6 @@ func main() {
 				// New quest found, print it
 				fmt.Printf("New Quest: %+v\n", quest.Article.Quest.Name)
 				fmt.Printf("Link: %s\n", createQuestURL(questID))
-				createQuestURL(questID)
 				seenQuestIDs[questID] = struct{}{}
 			}
 		}
