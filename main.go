@@ -21,8 +21,15 @@ func main() {
 	apiNonce := os.Getenv("API_NONCE")
 	apiSign := os.Getenv("API_SIGN")
 	retryInterval := 1 * time.Minute
+	seenQuestIDs, err := initSeenQuest(apiURL, apiNonce, apiSign)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	round := 0
 	for {
-		fmt.Println("start...")
+		fmt.Printf("Running round %d...\n", round)
 		// Get the current timestamp
 		// currentTimestamp := strconv.FormatInt(time.Now().Unix(), 10)
 
@@ -41,11 +48,19 @@ func main() {
 			continue
 		}
 
-		// Print the quests
 		for _, quest := range questResponse.Data.Quests {
-			fmt.Println(quest.Article.ID)
+			questID := quest.Article.ID
+			_, seen := seenQuestIDs[questID]
+			if !seen {
+				// New quest found, print it
+				fmt.Printf("New Quest: %+v\n", quest.Article.Quest.Name)
+				fmt.Printf("Link: %s\n", createQuestURL(questID))
+				createQuestURL(questID)
+				seenQuestIDs[questID] = struct{}{}
+			}
 		}
 
 		time.Sleep(1 * time.Minute)
+		round++
 	}
 }

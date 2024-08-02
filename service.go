@@ -1,17 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
-	"time"
 )
 
 // fetchQuestData makes an HTTP GET request to the specified URL with headers and returns the response body.
 func fetchQuestData(url, apiNonce, apiSign string) ([]byte, error) {
 	client := &http.Client{}
-	currentTimestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	// currentTimestamp := strconv.FormatInt(time.Now().Unix(), 10)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -35,7 +34,7 @@ func fetchQuestData(url, apiNonce, apiSign string) ([]byte, error) {
 	req.Header.Set("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36")
 	req.Header.Set("x-api-nonce", apiNonce)
 	req.Header.Set("x-api-sign", apiSign)
-	req.Header.Set("x-api-ts", currentTimestamp)
+	req.Header.Set("x-api-ts", "1722569054")
 	req.Header.Set("x-api-ver", "v2")
 
 	resp, err := client.Do(req)
@@ -50,4 +49,37 @@ func fetchQuestData(url, apiNonce, apiSign string) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+func initSeenQuest(url, apiNonce, apiSign string) (map[int]struct{}, error) {
+	fmt.Println("init.....")
+	seenQuestIDs := make(map[int]struct{})
+	body, err := fetchQuestData(url, apiNonce, apiSign)
+	if err != nil {
+		return nil, err
+	}
+
+	var questResponse QuestResponse
+	err = json.Unmarshal(body, &questResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, quest := range questResponse.Data.Quests {
+		questID := quest.Article.ID
+		_, seen := seenQuestIDs[questID]
+		if !seen {
+			// New quest found, print it
+			fmt.Printf("New Quest: %+v\n", quest.Article.Quest.Name)
+			fmt.Printf("Link: %s\n", createQuestURL(questID))
+			seenQuestIDs[questID] = struct{}{}
+		}
+	}
+	return seenQuestIDs, nil
+
+}
+
+func createQuestURL(id int) string {
+	r := "91299"
+	return fmt.Sprintf("https://debank.com/stream/%d?r=%s", id, r)
 }
