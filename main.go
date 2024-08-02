@@ -6,11 +6,13 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	url := "https://api.debank.com/quest/list?limit=50&status=hot"
 	client := &http.Client{}
 
 	for {
@@ -18,7 +20,16 @@ func main() {
 		// Get the current timestamp
 		// currentTimestamp := strconv.FormatInt(time.Now().Unix(), 10)
 
-		req, err := http.NewRequest("GET", url, nil)
+		// Load environment variables from .env file
+		if err := godotenv.Load(); err != nil {
+			log.Fatalf("Error loading .env file: %v", err)
+		}
+
+		apiURL := os.Getenv("API_URL")
+		apiNonce := os.Getenv("API_NONCE")
+		apiSign := os.Getenv("API_SIGN")
+
+		req, err := http.NewRequest("GET", apiURL, nil)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -38,8 +49,8 @@ func main() {
 		req.Header.Set("sec-fetch-site", "same-site")
 		req.Header.Set("source", "web")
 		req.Header.Set("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36")
-		req.Header.Set("x-api-nonce", "n_4FPV5vwEkS33pgKSQEmT0f3xcA9AGgC298C9cb64")
-		req.Header.Set("x-api-sign", "d796dad8beba6805f9f4b6d7d1f62a2b11feb30173becabe4cac20247432f0e5")
+		req.Header.Set("x-api-nonce", apiNonce)
+		req.Header.Set("x-api-sign", apiSign)
 		req.Header.Set("x-api-ts", "1722583294")
 		req.Header.Set("x-api-ver", "v2")
 
