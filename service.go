@@ -2,16 +2,25 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"time"
+
+	"github.com/chromedp/cdproto/network"
+	"github.com/chromedp/chromedp"
 )
 
 // fetchQuestData makes an HTTP GET request to the specified URL with headers and returns the response body.
-func fetchQuestData(url, apiNonce, apiSign string) ([]byte, error) {
+func fetchQuestData(url string) ([]byte, error) {
+
+	// GET apiNonce, apiSign, apiTs
+	apiNonce, apiSign, apiTs := getDebankQuestAPIHeaders()
+
 	client := &http.Client{}
-	// currentTimestamp := strconv.FormatInt(time.Now().Unix(), 10)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -35,7 +44,7 @@ func fetchQuestData(url, apiNonce, apiSign string) ([]byte, error) {
 	req.Header.Set("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36")
 	req.Header.Set("x-api-nonce", apiNonce)
 	req.Header.Set("x-api-sign", apiSign)
-	req.Header.Set("x-api-ts", "1722569054")
+	req.Header.Set("x-api-ts", apiTs)
 	req.Header.Set("x-api-ver", "v2")
 
 	resp, err := client.Do(req)
@@ -52,10 +61,71 @@ func fetchQuestData(url, apiNonce, apiSign string) ([]byte, error) {
 	return body, nil
 }
 
-func initSeenQuest(url, apiNonce, apiSign, botToken, channelID string) (map[int]struct{}, error) {
+func getDebankQuestAPIHeaders() (string, string, string) {
+	// Create a new context
+	ctx, cancel := chromedp.NewContext(context.Background())
+	defer cancel()
+
+	// Set a timeout to prevent the context from running indefinitely
+	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	// Slice to store the headers
+	var apiNonce, apiSign, apiTs string
+
+	// Set up a listener for network requests
+	chromedp.ListenTarget(ctx, func(ev interface{}) {
+		if ev, ok := ev.(*network.EventRequestWillBeSent); ok {
+			// Check if the request is for the desired API endpoint
+			if ev.Request.URL == "https://api.debank.com/quest/list?limit=50&status=hot" {
+				// Extract the desired headers
+				for headerName, headerVal := range ev.Request.Headers {
+					// fmt.Println("headerName: ", headerName)
+					// fmt.Println("headerVal: ", headerVal)
+					val, ok := headerVal.(string)
+					if !ok {
+						continue
+					}
+					switch headerName {
+					case "x-api-nonce":
+						apiNonce = val
+					case "x-api-sign":
+						apiSign = val
+					case "x-api-ts":
+						apiTs = val
+					}
+				}
+			}
+		}
+	})
+
+	// Run the Chrome process
+	err := chromedp.Run(ctx,
+		// Enable network events
+		network.Enable(),
+
+		// Navigate to the page
+		chromedp.Navigate("https://debank.com/quest"),
+
+		// Wait for the API request to be sent
+		chromedp.WaitVisible(`div[class^="QuestCard_title__"]`),
+	)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Print the captured headers
+	// fmt.Println("x-api-nonce:", apiNonce)
+	// fmt.Println("x-api-sign:", apiSign)
+	// fmt.Println("x-api-ts:", apiTs)
+	return apiNonce, apiSign, apiTs
+}
+
+func initSeenQuest(url, botToken, channelID string) (map[int]struct{}, error) {
 	fmt.Println("init.....")
 	seenQuestIDs := make(map[int]struct{})
-	body, err := fetchQuestData(url, apiNonce, apiSign)
+	body, err := fetchQuestData(url)
 	if err != nil {
 		return nil, err
 	}

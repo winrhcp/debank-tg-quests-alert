@@ -18,8 +18,6 @@ func main() {
 	}
 
 	apiURL := os.Getenv("API_URL")
-	apiNonce := os.Getenv("API_NONCE")
-	apiSign := os.Getenv("API_SIGN")
 	// Replace with your Telegram Bot Token
 	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
 	if botToken == "" {
@@ -31,7 +29,8 @@ func main() {
 		log.Fatal("CHANNEL_ID not set in environment")
 	}
 	retryInterval := 1 * time.Minute
-	seenQuestIDs, err := initSeenQuest(apiURL, apiNonce, apiSign, botToken, channelID)
+
+	seenQuestIDs, err := initSeenQuest(apiURL, botToken, channelID)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -40,10 +39,8 @@ func main() {
 	round := 0
 	for {
 		fmt.Printf("Running round %d...\n", round)
-		// Get the current timestamp
-		// currentTimestamp := strconv.FormatInt(time.Now().Unix(), 10)
 
-		body, err := fetchQuestData(apiURL, apiNonce, apiSign)
+		body, err := fetchQuestData(apiURL)
 		if err != nil {
 			log.Printf("Request failed: %v", err)
 			time.Sleep(retryInterval)
